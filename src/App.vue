@@ -15,7 +15,7 @@
           </template>
         </v-col>
         <v-col cols="8">
-          <ModelViewer :offsets="offsets" />
+          <ModelViewer :offsets="offsets" :rrWidth="rrWidth" :rrLength="rrLength" />
         </v-col>
       </v-row>
       
