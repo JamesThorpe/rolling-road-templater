@@ -6,20 +6,54 @@
     import { defineComponent, onMounted, onUpdated, ref, watch } from 'vue';
   import * as THREE from 'three'
   import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
+  import {STLExporter} from 'three/examples/jsm/exporters/STLExporter'
 
 const props = defineProps<{
-  offsets: Number[],
-  rrWidth: Number,
-  rrLength: Number
+  offsets: number[],
+  rrWidth: number,
+  rrLength: number
 }>();
+
+const exportObject = function downloadSTL() {
+  const filename = 'model.stl';
+  // Ensure the mesh is a valid Three.js object
+  if (!mesh || !mesh.geometry) {
+    console.error('Invalid mesh provided.');
+    return;
+  }
+
+  // Create the STLExporter
+  const exporter = new STLExporter();
+
+  // Export the mesh to an STL string
+  const stlString = exporter.parse(mesh);
+
+  // Create a Blob from the STL string
+  const blob = new Blob([stlString], { type: 'application/octet-stream' });
+
+  // Create a link element and set its href to the Blob URL
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+
+  // Programmatically click the link to trigger the download
+  document.body.appendChild(link);
+  link.click();
+
+  // Clean up
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+defineExpose({ exportObject });
 
 watch(props, () => {
   createMesh();
 }, {deep:true});
 
 
-let mesh=null;
-let scene;
+let mesh:THREE.Mesh=null;
+let scene: THREE.Scene;
 
 
 
@@ -30,7 +64,12 @@ onMounted(() => {
   // Scene setup
   scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0,250,0);
+  
   const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  threeContainer.value.appendChild(renderer.domElement);
+
   const controls = new OrbitControls(camera, renderer.domElement);
   // Optional settings for smoother control behavior
   controls.enableDamping = true; // Enables inertial damping (smooth motion)
@@ -38,14 +77,12 @@ onMounted(() => {
 
   controls.enablePan = true; // Enable dragging the camera
   controls.enableZoom = true; // Allow zooming
-  controls.target.set(0, 0, 0); // Focus on the origin or a specific point
-
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  threeContainer.value.appendChild(renderer.domElement);
+  controls.target.set(50, 0, 0); // Focus on the origin or a specific point
 
 
-  camera.position.set(30,50,0);
-  camera.lookAt(0, 0, 0);
+
+
+
   
 
   const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -80,7 +117,7 @@ function createMesh() {
   shape.lineTo(overallLength, 0);
   shape.lineTo(0, 0);
 
-  function makeHole(offset: Number) {
+  function makeHole(offset: number) {
     const hole = new THREE.Path();
     hole.moveTo(offset - (props.rrLength/2), 5);
     hole.lineTo(offset + (props.rrLength/2), 5);
@@ -96,24 +133,19 @@ function createMesh() {
     makeHole(offset);
   }
 
-  /*
-  for (let i = 0; i < props.offsets.length; i++) {
-    const hole = new THREE.Path();
-    hole.moveTo(i*2.5+1, 2);
-    hole.lineTo((i*2.5)+2+1, 2);
-    hole.lineTo((i*2.5)+2+1, 8);
-    
-    hole.lineTo(i*2.5+1, 8);
-    hole.lineTo(i*2.5+1, 2);
-    shape.holes.push(hole);
-  }*/
-
   // Extrude the shape to give it thickness
-  const extrudeSettings = { depth: 1, bevelEnabled: true };
+  const extrudeSettings = { depth: 1, bevelEnabled: true, bevelOffset: -1, steps: 1, bevelSegments: 1, bevelSize: 1, bevelThickness: 1 };
   const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  const material = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const material = new THREE.MeshStandardMaterial({ 
+    color: 0x1470ae ,
+    roughness: 0.5
+  });
+
+
+
   mesh = new THREE.Mesh(geometry, material);
   mesh.rotation.x = Math.PI / 2;
+  mesh.rotation.z = Math.PI / 2;
   scene.add(mesh);
 }
 
